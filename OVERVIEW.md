@@ -10,11 +10,12 @@
 
 Insulatrix started from a simple, physically legitimate question: *how close can a real, sprayable, multi-layer material stack get to zero heat transfer across an extreme temperature gradient — a forge-hot face on one side, near-absolute-zero on the other — and what does "honest" look like when you actually compute it instead of assuming it?*
 
-The answer, built out into a ~3,200-line interactive simulation, turned into three connected systems:
+The answer, built out into a ~4,900-line interactive simulation, turned into four connected systems:
 
-1. **A thermal insulation digital twin** — 11 formulations, from plain closed-cell foam up to **Insulatrix Pro**, a 6-stage stack combining gradient-composition spray, phase-change latent-heat storage, endothermic chemical absorption, an active thermoelectric-Peltier engine, and a vacuum multi-layer-insulation (MLI) jacket. At its design limit (a simulated 1000°C hot face against a cold face driven to 1 microkelvin — as close to absolute zero as the third law of thermodynamics allows), Insulatrix Pro sustains **100.000% suppression, 0 W/m² transmitted**, verified live via `python Insulatrix.py --proof`.
-2. **A hypervelocity impact-shield pod** — because an insulation stack that's actually going to protect a habitat needs to survive being hit by something. The pod combines a Whipple shield (sacrificial bumper + debris-cloud dispersion), pulsed electromagnetic deflection for conductive debris (real eddy-current physics — genuinely effective against "metal asteroid"-class threats, genuinely *not* effective against rock or ice, and the report says so), and a self-healing rear wall that auto-patches breaches within its rating faster than the cabin can decompress.
-3. **A live economic-impact estimator** — the subject of the rest of this document — which takes the *actual simulated thermal performance* of Insulatrix Pro versus a standard-foam baseline and asks: if a material with exactly these properties existed and were deployed everywhere it plausibly could be, what would that be worth?
+1. **A thermal insulation digital twin** — 12 formulations, from plain closed-cell foam up to **ULTRA CASCADE**, a 35-layer, ~246 mm, six-zone optimized stack (cascaded refractory→aerogel spray passes → evacuated carbon-MLI hot shields → vacuum-microsphere foam + VIP core → staged Bi₂Te₃ TEG engines → dual Kapton vacuum MLI jackets → low-e cap + ceramifiable weather seal), built per `goal2.md`'s PerfectVoid recipe on `ReferenceCode/RTP2.0.py`'s spray-pass architecture. ULTRA holds **99.9971% suppression, 4.49 W/m² transmitted, R=283.7 m²K/W** at the forge+cryogenic boundary, with 0 of its 35 layers over their temperature rating and an independent implicit finite-volume transient cross-check — verified live via `python Insulatrix.py --ultra-proof`. Its predecessor, **Insulatrix Pro**, still sustains **100.000% suppression, 0 W/m² transmitted** at the 1-microkelvin absolute-zero limit via `--proof` — both honestly reported, near-zero rather than literal zero.
+2. **Full fabrication protocols for every formulation** — because "optimized sprayable layering" is only meaningful if you could actually build it. Each approach carries a `FABRICATION` spec: substrate prep, slurry solids loading, nozzle/pressure/standoff spray parameters, flash and staged-cure schedules, vacuum-bagging and helium leak-test procedures, TEG integration, QC gates, and safety notes — keyed to the same layer data the thermal model uses, in-app on `F` or via `--fabrication`.
+3. **A hypervelocity impact-shield pod** — because an insulation stack that's actually going to protect a habitat needs to survive being hit by something. The pod combines a Whipple shield (sacrificial bumper + debris-cloud dispersion), pulsed electromagnetic deflection for conductive debris (real eddy-current physics — genuinely effective against "metal asteroid"-class threats, genuinely *not* effective against rock or ice, and the report says so), and a self-healing rear wall that auto-patches breaches within its rating faster than the cabin can decompress.
+4. **A live economic-impact estimator** — the subject of the rest of this document — which takes the *actual simulated thermal performance* of Insulatrix Pro versus a standard-foam baseline and asks: if a material with exactly these properties existed and were deployed everywhere it plausibly could be, what would that be worth?
 
 Every one of these claims is backed by a `--selftest` that exercises the real code path, not documentation written after the fact.
 
@@ -24,6 +25,7 @@ The project's guiding constraint, repeated throughout its own output: **near-zer
 
 - Comparing Insulatrix Pro against plain MLI (multi-layer insulation) for a dedicated ~90K cryogenic propellant tank shows **plain MLI wins** — a real, honest finding the economics module reports rather than hides, which is why the "space" economic category is framed around habitat *hull structure* (where Pro does win) rather than propellant tanks (where it doesn't).
 - The impact-shield pod explicitly labels any threat whose resulting breach exceeds the self-healing system's rated hole size as **"BEYOND RATING"** — unsurvivable by this system — rather than quietly clipping the number to claim success.
+- During ULTRA CASCADE's design, PCM "heat dams" were **removed** from the optimized stack when the physics showed they would exceed their temperature ratings at their assigned position — and that a phase-pinned dam actually *leaks more than it saves* against a near-zero cold sink. The honest answer (solid-state TEG recovery only) beat the impressive-sounding one.
 - Every `--proof`-style report ends with a stated caveat on exactly what was and wasn't demonstrated.
 
 This document holds itself to the same standard. The economic estimate below is a **Fermi estimate for an educational simulation** — an order-of-magnitude ceiling for discussion, not a costed forecast, and it says so at every step.
@@ -40,39 +42,39 @@ The estimator (`--economics` / `print_economics_report()` in the source) works i
 
 | Category | Boundary condition | Avoided flux (live-computed) | Per-unit result | Scale assumption |
 |---|---|---|---|---|
-| **Houses/buildings** (winter heating) | 21°C indoor vs. 0°C outdoor | 23.71 W/m² avoided (foam → Pro) | 10,384.6 kWh/yr avoided per house → **$1,246/house/year** | 200m² envelope, 4,380 heating-load-hours/yr, only 50% credited (opaque wall/roof is ~40–60% of a real building's total heat loss — windows, infiltration, and ground losses are outside what this model touches), 600 million dwellings in heating-dominant climates worldwide |
-| **Refrigeration** (fridges/coolers) | 21°C room vs. 4°C fridge interior | 19.46 W/m² avoided | 255.7 kWh/yr avoided per unit → **$38.35/unit/year** | 2m² fridge surface, 75% credited (door-seal/opening losses aren't insulation-driven), 2 billion household/small-commercial units worldwide |
-| **Polar habitats/greenhouses** | 21°C indoor vs. −40°C polar winter | 59.91 W/m² avoided | 41,981.6 kWh/yr avoided per facility → **$41,982/facility/year** | 200m² dome, only 40% credited (a food-growing dome needs extensive glazing for light, which opaque insulation can't replace), 100 facilities worldwide (research stations + illustrative future growing habitats), $1.00/kWh remote-logistics fuel cost (diesel airlift/sealift, not grid price) |
-| **Space habitat hull** (CAPEX, not recurring) | 25°C interior vs. 3K deep space | 125.33 W/m² avoided | 12,533 W less heater power needed per 100m² hull → **$18.8M smaller power system** per habitat module at $1,500/W space-qualified power cost | 20 new habitat-class modules/year worldwide |
+| **Houses/buildings** (winter heating) | 21°C indoor vs. 0°C outdoor | 23.77 W/m² avoided (foam → Pro) | 10,411.7 kWh/yr avoided per house → **$1,249/house/year** | 200m² envelope, 4,380 heating-load-hours/yr, only 50% credited (opaque wall/roof is ~40–60% of a real building's total heat loss — windows, infiltration, and ground losses are outside what this model touches), 600 million dwellings in heating-dominant climates worldwide |
+| **Refrigeration** (fridges/coolers) | 21°C room vs. 4°C fridge interior | 19.51 W/m² avoided | 256.4 kWh/yr avoided per unit → **$38.45/unit/year** | 2m² fridge surface, 75% credited (door-seal/opening losses aren't insulation-driven), 2 billion household/small-commercial units worldwide |
+| **Polar habitats/greenhouses** | 21°C indoor vs. −40°C polar winter | 60.08 W/m² avoided | 42,106.6 kWh/yr avoided per facility → **$42,107/facility/year** | 200m² dome, only 40% credited (a food-growing dome needs extensive glazing for light, which opaque insulation can't replace), 100 facilities worldwide (research stations + illustrative future growing habitats), $1.00/kWh remote-logistics fuel cost (diesel airlift/sealift, not grid price) |
+| **Space habitat hull** (CAPEX, not recurring) | 25°C interior vs. 3K deep space | 125.52 W/m² avoided | 12,552 W less heater power needed per 100m² hull → **$18.8M smaller power system** per habitat module at $1,500/W space-qualified power cost | 20 new habitat-class modules/year worldwide |
 
 *(Full precision, live-reproducible: run `python Insulatrix.py --economics`.)*
 
 ### 3.2 Totals
 
 ```
-Houses/buildings (winter heating):     $747,688,650,149 / year
-Refrigeration (fridges/coolers):        $76,708,620,810 / year
-Polar habitats/greenhouses:                 $4,198,164 / year
-Space habitat hull (CAPEX-equivalent):    $376,001,036 / year
+Houses/buildings (winter heating):     $749,642,213,203 / year
+Refrigeration (fridges/coolers):        $76,906,173,756 / year
+Polar habitats/greenhouses:                 $4,210,660 / year
+Space habitat hull (CAPEX-equivalent):    $376,558,619 / year
 ─────────────────────────────────────────────────────────────
-GLOBAL TOTAL:                          $824,777,470,159 / year
+GLOBAL TOTAL:                          $826,929,156,239 / year
 ```
 
-**≈ $825 billion per year**, full-adoption ceiling, gross of any transition or manufacturing cost.
+**≈ $827 billion per year**, full-adoption ceiling, gross of any transition or manufacturing cost.
 
 ### 3.3 What that's worth — capitalized value
 
 Treating $825B/year as a perpetual, constant, risk-free annuity and capitalizing it at a 7% discount rate (a conventional rate for long-lived infrastructure-style cash flows):
 
 ```
-PV = Annual savings / discount rate = $824,777,470,159 / 0.07 ≈ $11.78 trillion
+PV = Annual savings / discount rate = $826,929,156,239 / 0.07 ≈ $11.81 trillion
 ```
 
 **≈ $11.8 trillion** illustrative present value. This is explicitly a framing device, not a valuation methodology applied rigorously — see §4.
 
 ### 3.4 Sanity check against real-world published figures
 
-For context (not used as an input to the model, just a plausibility check): the IEA has repeatedly estimated global final energy consumption for building space heating at roughly 35–50 exajoules/year, and reports on global building-sector energy-efficiency potential have cited realistic achievable savings in the hundreds of billions of dollars per year and cumulative multi-trillion-dollar investment opportunities over the coming decades. Our $748B/year buildings figure — an explicit *full-adoption, zero-transition-cost ceiling* — lands at the high end of, and somewhat above, that realistic range, which is exactly what a ceiling estimate should do: bound the plausible upside without being absurd relative to figures published by real energy agencies. That consistency is a sanity check, not a validation.
+For context (not used as an input to the model, just a plausibility check): the IEA has repeatedly estimated global final energy consumption for building space heating at roughly 35–50 exajoules/year, and reports on global building-sector energy-efficiency potential have cited realistic achievable savings in the hundreds of billions of dollars per year and cumulative multi-trillion-dollar investment opportunities over the coming decades. Our $750B/year buildings figure — an explicit *full-adoption, zero-transition-cost ceiling* — lands at the high end of, and somewhat above, that realistic range, which is exactly what a ceiling estimate should do: bound the plausible upside without being absurd relative to figures published by real energy agencies. That consistency is a sanity check, not a validation.
 
 ## 4. Honest caveats — read before quoting any number in this document
 
@@ -93,8 +95,10 @@ Because the alternative — a vague qualitative claim that "better insulation sa
 
 ```bash
 python Insulatrix.py --selftest      # confirms the whole simulation (incl. economics) is internally consistent
-python Insulatrix.py --compare       # the 11-formulation comparison table
+python Insulatrix.py --compare       # the 12-formulation comparison table
+python Insulatrix.py --ultra-proof   # the 8-step ULTRA CASCADE stacking proof (99.997% verified)
 python Insulatrix.py --proof         # near-zero heat transfer at the absolute-zero limit
+python Insulatrix.py --fabrication   # ULTRA CASCADE's full build protocol
 python Insulatrix.py --pod-report    # impact-shield assessment
 python Insulatrix.py --pod-proof     # magnetic deflection A/B proof + self-healing decompression race
 python Insulatrix.py --economics     # everything in Section 3, exactly as printed above
